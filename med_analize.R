@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript
+#!/usr/bin/env Rscript
 
 # __author__ = 'Milosz Chodkowski PUT'
 
