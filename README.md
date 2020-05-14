@@ -40,7 +40,7 @@ sudo chmod +x script.R
 ./script.R --args
 ```
 
-* Using as standalone (execunting install.sh is required)
+* Using as standalone (executing install.sh is required)
 ```
 med_analize --args
 ```
