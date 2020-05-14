@@ -1,11 +1,18 @@
 # Med-Analize
 ```
-Simple statistical analyzer for medical data
+Simple statistical analyzer for medical data.
 ```
 
 # Usage
 ```
-xxx
+# -> Using Rscript
+Rscript script.R --args
+
+# -> Using shell
+# first
+sudo chmod +x script.R
+# then
+./script.R --args
 ```
 
 # Author
