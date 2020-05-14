@@ -1,9 +1,9 @@
 # Med-Analize
-```
+
 Simple statistical analyzer for medical data.
-```
+
 # Installation
-You need to have R and Rscript installed.
+You need to have R language and Rscript installed.
 To do it, just use ```sudo apt install r-base```
 
 After this you have to install dependencies.
@@ -12,6 +12,18 @@ Execute install_dependencies.R
 sudo chmod +x install_dependencies.R
 # then
 ./install_dependencies.R
+```
+
+After this you can use app by executing script or you can install it via install.sh script.
+```
+./install.sh
+# then use as standalone
+med_analize --args
+```
+
+To uninstall it -> execute uninstall.sh
+```
+./uninstall.sh
 ```
 
 # Usage
@@ -28,7 +40,7 @@ sudo chmod +x script.R
 ./script.R --args
 ```
 
-* Using as standalone
+* Using as standalone (execunting install.sh is required)
 ```
 med_analize --args
 ```
