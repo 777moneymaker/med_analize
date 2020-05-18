@@ -7,8 +7,8 @@ fi
 
 echo "Copying script to $HOME/med_analyze"
 mkdir $HOME/med_analize
-cp ./med_analize.R $HOME/med_analize/
-cp ./generate_raport.R $HOME/med_analize/
+cp ./Program/med_analize.R $HOME/med_analize/
+cp ./Program/utilities.R $HOME/med_analize/
 ln -s $HOME/med_analize/med_analize.R /usr/local/bin/med_analize
 chmod +x /usr/local/bin/med_analize
 

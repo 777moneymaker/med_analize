@@ -4,4 +4,4 @@
 
 # TODO
 # add another packages
-install.packages('argparse', 'Hmisc', 'modules', 'stats')
+install.packages(c('argparse', 'Hmisc', 'modules'))
