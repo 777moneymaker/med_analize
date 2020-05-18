@@ -5,13 +5,12 @@ then
     exec sudo /bin/bash "$0" "$@"
 fi
 
-printf 'Copying script to $HOME/med_analyze/\n'
+echo "Copying script to $HOME/med_analyze"
 mkdir $HOME/med_analize
 cp ./med_analize.R $HOME/med_analize/
+cp ./generate_raport.R $HOME/med_analize/
 ln -s $HOME/med_analize/med_analize.R /usr/local/bin/med_analize
 chmod +x /usr/local/bin/med_analize
 
-printf "Linking ...\n"
-printf "Done!\n"
-printf "Ready to use -> med_analyze --args\n"
-printf "To remove just use uninstall.sh script\n"
+echo "med_analyze is ready to use \"med_analize --args\""
+echo "To remove -> use uninstall.sh script"

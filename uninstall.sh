@@ -9,20 +9,20 @@ DIR="${HOME}/med_analize"
 FILE="/usr/local/bin/med_analize"
 
 if [ -d "$DIR" ]; then
-	printf 'Uninstalling...\n'
+	echo 'Removing directory conteining files.'
   	rm -r ${DIR}
 else
-	printf "ERROR: Directory containing program doesn't exist\n"
+	echo "ERROR: Directory containing program doesn't exist."
 	exit 1
 fi
 
 if [ -L "$FILE" ]; then
-	printf 'Removing symbolic links...\n'
+	echo 'Links removed.'
   	rm "$FILE"
 else
-	printf "ERROR: Symbolic link not found!\n"
+	echo "ERROR: Symbolic link not found."
 	exit 1
 fi
 
-printf "Uninstalled successfully!\n"
+echo "Program uninstalled."
 
