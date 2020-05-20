@@ -12,7 +12,9 @@ source('~/med_analize/utilities.R')
 med_desc <- "Medical data analyzer.\\n\\
 Program was written for statistical analysis of medical data.\\n\\
 The required format of data file is *.csv file.\\n\\
-Another requirement is to set first column as the group name e.g. gr1, gr2 etc."
+Another requirement is to set first column as the group name e.g. gr1, gr2 etc.\\n\\ \\n\\
+90 % of the analysis is the analysis of numeric data. That was my intention.\\n\\
+Author: Miłosz Chodkowski PUT"
 
 # Arguments parser.
 parser <- argparse::ArgumentParser(description = med_desc, 
@@ -50,18 +52,23 @@ cat('==================================\n')
 reportData$shortSummary <- quiet(summary(loadedData))
 
 # If user wants long format.
+reportData$numericSummary <- capture.output(invisible(summariseByGroup(med_data = loadedData, grName = args$grp)))
+reportData$fullSummary <- quiet(summariseByGroup(med_data = loadedData, grName = args$grp))
 if(!args$long_f){
   cat('\nLong Summary of numeric data\n')
   cat('==================================\n')
-  reportData$numericSummary <- summariseByGroup(med_data = loadedData, grName = args$grp)
+  cat(reportData$numericSummary, sep = '\n')
   cat('==================================\n')
 }else{
   cat('Skipped long summary report.\n')
-  reportData$numericSummary <- quiet(summariseByGroup(med_data = loadedData, grName = args$grp))
 }
 
 # Make shapiro test. Plot distributions.
-reportData$dataSignificance <- nd_group_test(loadedData)
+reportData$dataSignificance <- capture.output(invisible(nd_group_test(loadedData)))
+cat('Data significance according to normal distribution.\n')
+cat('==================================\n')
+cat(reportData$dataSignificance, sep ='\n')
+cat('==================================\n \n')
 quiet(nd_group_plot(loadedData))
 
 # Generate raport.

@@ -1,10 +1,12 @@
 #!/usr/bin/env Rscript
 
 # __author__ = 'Milosz Chodkowski PUT'
+
 suppressMessages(library('Hmisc', quietly = T))
 suppressMessages(library('dplyr', quietly = T))
 options(device = 'jpeg')
-# Raport function.
+
+# Report function.
 generateReport <- function(reportData){
   # Init raport description.
   sink(file = reportData$args$outfile, append = T)
@@ -35,12 +37,12 @@ generateReport <- function(reportData){
   sink(file = reportData$args$outfile, append = T)
   cat('Full summary of the given data.\n')
   cat('==================================\n')
-  summariseByGroup(reportData$fullData, reportData$args$grp)
+  cat(reportData$numericSummary, sep = '\n')
   cat('==================================\n \n')
   sink()
   
   # Write numeric data numeric data
-  for(summ in reportData$numericSummary){
+  for(summ in reportData$fullSummary){
     write.table(summ, file = reportData$args$xlsfile, quote = F, na = '', row.names = F, append = T, sep = ';')
   }
  
@@ -48,7 +50,7 @@ generateReport <- function(reportData){
   sink(file = reportData$args$outfile, append = T)
   cat('Data significance according to normal distribution.\n')
   cat('==================================\n')
-  nd_group_test(reportData$fullData)
+  cat(reportData$dataSignificance, sep = '\n')
   cat('==================================\n \n')
   sink()
   
@@ -88,13 +90,13 @@ summariseByGroup <- function(med_data, grName){
     for(gr in grps){
       grouped <- droplevels(med_data[med_data[[1]] == gr,])
       final[[gr]] <- summary(grouped)
-      print(final[[gr]])
+      print(final[[gr]], quote = F, row.names = F)
       cat('\n**************************\n')
     }
   }else{
     grouped <- droplevels(med_data[med_data[[1]] == gr,])
     final[[gr]] <- summary(grouped)
-    print(final[[gr]])
+    print(final[[gr]], quote = F, row.names = F)
     cat('\n**************************\n')
   }
   return(final)

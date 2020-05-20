@@ -3,6 +3,8 @@
 Simple statistical analyzer for medical data.
 
 # Installation
+WARNING! Make sure, that you are executing install and uninstall script directly in the med_analize folder.
+
 You need to have R language and Rscript installed.
 To do it, just use ```sudo apt install r-base```
 
@@ -27,6 +29,11 @@ To uninstall it -> execute uninstall.sh
 ```
 
 # Usage
+* For additional info
+```
+ med_analize --help
+```
+
 * Using Rscript
 ```
 Rscript script.R --args
@@ -40,7 +47,7 @@ sudo chmod +x script.R
 ./script.R --args
 ```
 
-* Using as standalone (executing install.sh is required)
+* Using as standalone (recommended-> executing install.sh is required)
 ```
 med_analize --args
 ```
