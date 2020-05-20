@@ -4,4 +4,4 @@
 
 # TODO
 # add another packages
-install.packages(c('argparse', 'Hmisc', 'dplyr'))
+install.packages(c('argparse', 'Hmisc', 'dplyr'), repos="http://cran.r-project.org", dependencies = T)

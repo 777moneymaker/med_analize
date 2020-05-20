@@ -5,41 +5,37 @@ suppressMessages(library('Hmisc', quietly = T))
 suppressMessages(library('dplyr', quietly = T))
 
 # Raport function.
-generateReport <- function(med_data, outfile, n_missing){
+generateReport <- function(reportData){
   # Init raport description.
-  sink(file = outfile, append = T)
+  sink(file = reportData$args$outfile, append = T)
   cat('Report generated usingmed_analize program..\n')
   cat('Author -> Miłosz Chodkowski PUT\n')
   cat('======================================================\n\n')
   sink()
   
   # Count missing data.
-  sink(file = outfile, append = T)
-  cat('In given file', n_missing, 'record/s with Not Available data.\n')
+  sink(file = reportData$args$outfile, append = T)
+  cat('In given file', reportData$n_missing, 'record/s with Not Available data.\n')
   sink()
   
-  if(n_missing){
-    sink(file = outfile, append = T)
-    cat('Changes in', n_missing, 'records\n\n')
+  if(reportData$n_missing){
+    sink(file = reportData$args$outfile, append = T)
+    cat('Changes in', reportData$n_missin, 'records\n\n')
     sink()
   }
   # Short summary.
-  sink(file = outfile, append = T)
+  sink(file = reportData$args$outfile, append = T)
   cat('Short summary of the given data.\n')
   cat('==================================\n')
-  print(summary(med_data))
+  print(reportData$shortSummary)
   cat('==================================\n \n')
   sink()
   
-  # Long summary by groups.
-  sink(file = outfile, append = T)
-  cat('Summary by possible groups\n')
-  cat('==================================\n')
-  summariseNumericByCharacter(med_data)
-  cat('==================================\n')
-  sink()
-  
-  cat('Full report saved to', outfile, '\n')
+  # Write numeric data numeric data
+  for(summ in reportData$numericSummary){
+    write.table(summ, file = reportData$args$xlsfile, quote = F, na = '', row.names = F, append = T, sep = ';')
+  }
+  cat('Full report saved to', reportData$args$outfile, '\n')
 }
 
 # Mode function for numeric and character vectors.
@@ -64,33 +60,22 @@ imputeAndNotify <- function(med_data, n_missing){
   return(med_data)
 }
 
-summariseNumeric <- function(med_data, grName){
-  for(cl in colnames(med_data)){
-    if(is.numeric(med_data[[cl]]) && cl != grName){
-      summ <- group_by(med_data, eval(parse(text = grName))) %>% summarise(
-        count = n(),
-        mean = round(mean(eval(parse(text = cl))), 2),
-        sd = round(sd(eval(parse(text = cl))), 2),
-        median = round(median(eval(parse(text = cl))), 2),
-        var = round(var(eval(parse(text = cl))), 2))
-      ungroup(med_data)
-      
-      res <- as.data.frame(summ)
-      colnames(res)[1] <- grName
-      
-      cat('*', cl, '*\n')
-      print(res)
-      cat('\n')
+summariseByGroup <- function(med_data, grName){
+  final <- list()
+  if(grName == 'all'){
+    grps <- unique(med_data[[1]])
+    for(gr in grps){
+      grouped <- droplevels(med_data[med_data[[1]] == gr,])
+      final[[gr]] <- summary(grouped)
+      print(final[[gr]])
+      cat('\n**************************\n')
     }
   }
+  return(final)
 }
 
-summariseNumericByCharacter <- function(med_data){
-  for(x in colnames(med_data)){
-    if(is.character(as.vector(med_data[[x]]))){
-      cat('---> Grouped by:', x, '\n')
-      summariseNumeric(med_data, x)
-    }
-  }
-}
-
+quiet <- function(x) { 
+  sink(tempfile()) 
+  on.exit(sink()) 
+  invisible(force(x)) 
+} 
