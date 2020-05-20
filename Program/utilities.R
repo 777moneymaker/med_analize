@@ -49,7 +49,6 @@ getmode <- function(v) {
 imputeAndNotify <- function(med_data, n_missing){
   if (n_missing)
     cat('Changes in', n_missing, 'records\n\n')
-  
   for(col in colnames(med_data)){
     if(is.numeric(med_data[[col]])){
       med_data[[col]] <- impute(med_data[[col]], fun = mean)
@@ -60,6 +59,9 @@ imputeAndNotify <- function(med_data, n_missing){
   return(med_data)
 }
 
+
+# I know, I know ... There is summarise function in Hmisc
+# But by making grouping like that, it makes writing it far more effective for me.
 summariseByGroup <- function(med_data, grName){
   final <- list()
   if(grName == 'all'){
@@ -72,6 +74,34 @@ summariseByGroup <- function(med_data, grName){
     }
   }
   return(final)
+}
+
+# Make a shapiro test for all numeric columns for all groups.
+nd_group_Test <- function(med_data){
+  
+  grps <- unique(med_data[[1]])
+  final <- list()
+  
+  for(gr in grps){
+    grouped <- droplevels(med_data[med_data[[1]] == gr,])
+    numCols <- grouped[,unlist(lapply(grouped, is.numeric))]
+    test <- sapply(numCols, shapiro.test)
+    cat('In group:', gr, '\n')
+    for(cl in colnames(test)){
+      if(test[,cl]$p.value > 0.05){
+        cat('Attribute', paste('\"', cl, '\"', sep = ''), 'not different from ND. p-value =', test[,cl]$p.value, '\n')
+      }else{
+        cat('Attribute', paste('\"', cl, '\"', sep = ''), 'different from ND. p-value =', test[,cl]$p.value, '\n')
+      }
+    }
+    final[[gr]] <- test
+  }
+  return(final)
+}
+
+nd_group_plot <- function(med_data){
+  # TODO: 
+  # make density plot for all groups and parameters.
 }
 
 quiet <- function(x) { 

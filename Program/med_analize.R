@@ -2,6 +2,7 @@
 
 # __author__ = 'Milosz Chodkowski PUT'
 
+# Suppress warnings.
 options(warn = -1)
 
 # Load library.
@@ -24,15 +25,6 @@ required_args$add_argument('-xls', '--xls', dest = 'xlsfile', help = '*.xls file
 required_args$add_argument('-f', '--file', dest = 'file', help = 'path to file containing data', required = TRUE)
 args <- parser$parse_args()
 
-
-# # File load for interactive use.
-# L <- readLines('przykladoweDane-Projekt.csv', n = 1)
-# if(grepl(";", L)){
-#   fh_int <- read.csv2(file = 'przykladoweDane-Projekt.csv', sep = ';')
-# }else{
-#   fh_int <- read.csv2(file = 'przykladoweDane-Projekt.csv', sep = ',')
-# }
-
 # File load for batch mode.
 L <- readLines(args$file, n = 1)
 if(grepl(";", L)){
@@ -41,16 +33,16 @@ if(grepl(";", L)){
   loadedData <- read.csv2(file = args$file, sep = ',')
 }
 
+# Empty list with data for report.
 reportData <- list()
 
+# Calculate number of missing data cells.
 n_missing <- sum(!stats::complete.cases(loadedData))
 cat('In given file', n_missing, 'record/s with Not Available data.\n')
 reportData$n_missing <- n_missing
 
 # Impute the data if neccessary.
 loadedData <- imputeAndNotify(loadedData, n_missing)
-# fh_int <- usrUtilities$imputeAndNotify(fh_int, n_missing)
-
 reportData$fullData <- loadedData
 
 # Print short summary.
@@ -60,6 +52,7 @@ summary(loadedData)
 cat('==================================\n')
 reportData$shortSummary <- quiet(summary(loadedData))
 
+# If user wants long format.
 if(!args$long_f){
   cat('\nLong Summary of numeric data\n')
   cat('==================================\n')
