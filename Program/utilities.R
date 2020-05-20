@@ -3,7 +3,7 @@
 # __author__ = 'Milosz Chodkowski PUT'
 suppressMessages(library('Hmisc', quietly = T))
 suppressMessages(library('dplyr', quietly = T))
-
+options(device = 'jpeg')
 # Raport function.
 generateReport <- function(reportData){
   # Init raport description.
@@ -31,11 +31,30 @@ generateReport <- function(reportData){
   cat('==================================\n \n')
   sink()
   
+  # Long format summary.
+  sink(file = reportData$args$outfile, append = T)
+  cat('Full summary of the given data.\n')
+  cat('==================================\n')
+  summariseByGroup(reportData$fullData, reportData$args$grp)
+  cat('==================================\n \n')
+  sink()
+  
   # Write numeric data numeric data
   for(summ in reportData$numericSummary){
     write.table(summ, file = reportData$args$xlsfile, quote = F, na = '', row.names = F, append = T, sep = ';')
   }
+ 
+  # Data significance
+  sink(file = reportData$args$outfile, append = T)
+  cat('Data significance according to normal distribution.\n')
+  cat('==================================\n')
+  nd_group_test(reportData$fullData)
+  cat('==================================\n \n')
+  sink()
+  
   cat('Full report saved to', reportData$args$outfile, '\n')
+  # REPORT END
+  # =========================
 }
 
 # Mode function for numeric and character vectors.
@@ -72,12 +91,17 @@ summariseByGroup <- function(med_data, grName){
       print(final[[gr]])
       cat('\n**************************\n')
     }
+  }else{
+    grouped <- droplevels(med_data[med_data[[1]] == gr,])
+    final[[gr]] <- summary(grouped)
+    print(final[[gr]])
+    cat('\n**************************\n')
   }
   return(final)
 }
 
 # Make a shapiro test for all numeric columns for all groups.
-nd_group_Test <- function(med_data){
+nd_group_test <- function(med_data){
   
   grps <- unique(med_data[[1]])
   final <- list()
@@ -102,6 +126,21 @@ nd_group_Test <- function(med_data){
 nd_group_plot <- function(med_data){
   # TODO: 
   # make density plot for all groups and parameters.
+  graphics.off()
+  grps <- unique(med_data[[1]])
+  for(gr in grps){
+    grouped <- droplevels(med_data[med_data[[1]] == gr,])
+    numCols <- grouped[,unlist(lapply(grouped, is.numeric))]
+    l <- lapply(colnames(numCols), function(col){
+      ggpubr::ggdensity(data = numCols, x = col, title = paste(col, 'density plot'), xlab = paste(col, 'value'))
+    })
+    res <- suppressMessages(ggpubr::ggarrange(plotlist = l))
+    jpeg(filename = paste(gr, 'density_plot.jpeg', sep = '_'), width = 1280, height = 720)
+    ggpubr::annotate_figure(res, top = paste(gr, 'attributions distribution plot'))
+    print(res)
+    dev.off()
+  }
+  return(res)
 }
 
 quiet <- function(x) { 

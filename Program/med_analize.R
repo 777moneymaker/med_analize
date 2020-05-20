@@ -23,15 +23,12 @@ parser$add_argument('-gr', '--group', dest = 'grp', help = 'group name for group
 required_args <- parser$add_argument_group('required arguments')
 required_args$add_argument('-xls', '--xls', dest = 'xlsfile', help = '*.xls file for group summary to be saved', required = F)
 required_args$add_argument('-f', '--file', dest = 'file', help = 'path to file containing data', required = TRUE)
+required_args$add_argument('-s', '--sep', dest = 'sep', help = 'separator used in csv file', required = TRUE)
 args <- parser$parse_args()
 
 # File load for batch mode.
 L <- readLines(args$file, n = 1)
-if(grepl(";", L)){
-  loadedData <- read.csv2(file = args$file, sep = ';')
-}else{
-  loadedData <- read.csv2(file = args$file, sep = ',')
-}
+loadedData <- read.csv2(file = args$file, sep = args$sep)
 
 # Empty list with data for report.
 reportData <- list()
@@ -62,6 +59,10 @@ if(!args$long_f){
   cat('Skipped long summary report.\n')
   reportData$numericSummary <- quiet(summariseByGroup(med_data = loadedData, grName = args$grp))
 }
+
+# Make shapiro test. Plot distributions.
+reportData$dataSignificance <- nd_group_test(loadedData)
+quiet(nd_group_plot(loadedData))
 
 # Generate raport.
 if(!is.null(args$outfile)){
