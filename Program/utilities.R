@@ -4,7 +4,8 @@
 
 suppressMessages(library('Hmisc', quietly = T))
 suppressMessages(library('dplyr', quietly = T))
-options(device = 'jpeg')
+suppressMessages(library('ggpubr', quietly = T))
+options(device = 'jpeg', warn = -1)
 
 # Report function.
 generateReport <- function(reportData){
@@ -35,22 +36,20 @@ generateReport <- function(reportData){
   
   # Long format summary.
   sink(file = reportData$args$outfile, append = T)
-  cat('Full summary of the given data.\n')
+  cat('ATTENTION!.\n')
   cat('==================================\n')
-  cat(reportData$numericSummary, sep = '\n')
+  cat('Full summary of the given data is a very big table. It has been saved in', reportData$args$xlsfile, '\n')
   cat('==================================\n \n')
   sink()
   
-  # Write numeric data numeric data.
-  for(summ in reportData$fullSummary){
-    write.table(summ, file = reportData$args$xlsfile, quote = F, na = '', row.names = F, append = T, sep = ';')
-  }
+  # Write full summary to xls.
+  write.table(reportData$fullSummary, file = reportData$args$xlsfile, quote = F, na = '', row.names = F, sep = ';')
   
   # Number of outliers.
   sink(file = reportData$args$outfile, append = T)
-  cat('\nNumber of outliers in given data sets\n')
+  cat('Number of outliers in given data sets\n')
   cat('==================================\n')
-  cat(reportData$outliersReport, sep = '\n')
+  cat(reportData$outliersStr, sep = '\n')
   cat('==================================\n')
   sink()
   
@@ -58,9 +57,12 @@ generateReport <- function(reportData){
   sink(file = reportData$args$outfile, append = T)
   cat('Data significance according to normal distribution.\n')
   cat('==================================\n')
-  cat(reportData$dataSignificance, sep = '\n')
+  cat(reportData$dataSignificanceStr, sep = '\n')
   cat('==================================\n \n')
   sink()
+  
+  # Stat analysis.
+  # TODO
   
   cat('Full report saved to', reportData$args$outfile, '\n')
   # REPORT END
@@ -89,84 +91,88 @@ imputeAndNotify <- function(med_data, n_missing){
 }
 
 
-# I know, I know ... There is summarise function in Hmisc
-# But by making grouping like that, it makes writing it far more effective for me.
-summariseByGroup <- function(med_data, grName){
-  final <- list()
-  if(grName == 'all'){
-    grps <- unique(med_data[[1]])
-    for(gr in grps){
-      grouped <- droplevels(med_data[med_data[[1]] == gr,])
-      final[[gr]] <- summary(grouped)
-      print(final[[gr]], quote = F, row.names = F)
-      cat('\n**************************\n')
-    }
-  }else{
-    grouped <- droplevels(med_data[med_data[[1]] == gr,])
-    final[[gr]] <- summary(grouped)
-    print(final[[gr]], quote = F, row.names = F)
-    cat('\n**************************\n')
-  }
-  return(final)
+# Summarise every attribute.
+summariseAllData <- function(med_data){
+  grCol <- as.name(colnames(med_data)[1])
+  res <- med_data %>% group_by(!!grCol) %>% summarise_if(.predicate = is.numeric, .funs = list(
+    median = median,
+    mean = mean,
+    var = var, 
+    min = min, 
+    max = max, 
+    sd = sd, 
+    p.val = function(x) return(shapiro.test(x)$p.value))
+  ) 
+  return(res)
 }
 
 # Make a shapiro test for all numeric columns for all groups.
-nd_group_test <- function(med_data){
-  
-  grps <- unique(med_data[[1]])
-  final <- list()
-  
+report_data_significance <- function(attrs, summarisedData){
+  grps <- unique(summarisedData[[1]])
   for(gr in grps){
-    grouped <- droplevels(med_data[med_data[[1]] == gr,])
-    numCols <- grouped[,unlist(lapply(grouped, is.numeric))]
-    test <- sapply(numCols, shapiro.test)
     cat('In group:', gr, '\n')
-    for(cl in colnames(test)){
-      if(test[,cl]$p.value > 0.05){
-        cat('Attribute', paste('\"', cl, '\"', sep = ''), 'not different from ND. p-value =', test[,cl]$p.value, '\n')
+    df <- summarisedData %>% filter(.[[1]] == gr)
+    for(a in attrs){
+      attr <- paste(a,'_p.val', sep = '')
+      if(df[[attr]] > 0.05){
+        cat(sprintf('Attribute %s not different from ND. p.value: %g \n', a, df[[attr]]))
       }else{
-        cat('Attribute', paste('\"', cl, '\"', sep = ''), 'different from ND. p-value =', test[,cl]$p.value, '\n')
+        cat(sprintf('Attribute %s different from ND. p.value: %g \n', a, df[[attr]]))
       }
     }
-    final[[gr]] <- test
   }
-  return(final)
 }
 
+# plot densities of attributes by group
 nd_group_plot <- function(med_data, path){
-  # TODO: 
   # make density plot for all groups and parameters.
+  grCol <- as.name(colnames(med_data)[1])
   graphics.off()
-  grps <- unique(med_data[[1]])
-  for(gr in grps){
-    grouped <- droplevels(med_data[med_data[[1]] == gr,])
-    numCols <- grouped[,unlist(lapply(grouped, is.numeric))]
-    l <- lapply(colnames(numCols), function(col){
-      ggpubr::ggdensity(data = numCols, x = col, title = paste(col, 'density plot'), xlab = paste(col, 'value'))
+  
+  med_data %>% group_by(!!grCol) %>% do(... = {
+    gr <- as.character(unique(.[[1]]))
+    selected <- as.data.frame(select_if(., is.numeric))
+    l <- lapply(colnames(selected), function(col){
+      ggpubr::ggdensity(data = selected, x = col, title = paste(col, 'density plot'), xlab = paste(col, 'value'))
     })
     res <- suppressMessages(ggpubr::ggarrange(plotlist = l))
     jpeg(filename = file.path(path, paste(gr, 'density_plot.jpeg', sep = '_')), width = 1280, height = 720)
     ggpubr::annotate_figure(res, top = paste(gr, 'attributions distribution plot'))
     print(res)
     dev.off()
-  }
-  return(res)
+  })
 }
 
+# plot boxplots by group
 grouped_box_plot <- function(med_data, path){
   graphics.off()
-  grps <- unique(med_data[[1]])
-  graphics.off()
-  for(gr in grps){
-    grouped <- droplevels(med_data[med_data[[1]] == gr,])
-    numCols <- grouped[,unlist(lapply(grouped, is.numeric))]
-    jpeg(filename = file.path(path, paste(gr, 'box_plot.jpeg', sep = '_')), width = 1280, height = 720)
-    boxplot(numCols, main = paste(gr, 'attributes box plot'), xlab = 'Attributes', ylab = 'Value', outline = T)
+  grCol <- as.name(colnames(med_data)[1])
+  cat('**Plotting data** ...\n')
+  med_data %>% group_by(!!grCol) %>% do(... = {
+    grName <- as.character(unique(.[[1]]))
+    flpath = file.path(path, paste(paste(grName, 'boxplot', sep = '_'), '.jpeg', sep = ''))
+    jpeg(file = flpath, width = 1280, height = 720)
+    dataf <- as.data.frame(select_if(., is.numeric))
+    for(i in seq(ncol(dataf))){
+      dataf[,i] <- as.numeric(dataf[,i])
+    }
+    boxplot(dataf)
     dev.off()
-  }
+    })
 }
 
-outliers <- function(med_data){
+analize_two <- function(med_data){
+  # TODO
+  gr <- as.name(colnames(med_data)[1])
+  res <- med_data %>% group_by(!!grCol)
+  return(res)
+}
+    
+analize_multiple <- function(){
+  # TODO
+}
+
+outliers <- function(vec){
   qnt <- quantile(vec)
   H <- 1.5 * IQR(vec)
   res <- vec

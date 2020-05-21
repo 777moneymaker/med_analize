@@ -21,7 +21,6 @@ parser <- argparse::ArgumentParser(description = med_desc,
 								   formatter_class= 'argparse.RawTextHelpFormatter')
 parser$add_argument('-o', '--out', dest = 'outfile', help = 'output file with generated report', required = F)
 parser$add_argument('-l', '--long', dest = 'long_f', help = 'allow printing long reports on the screen', required = F, action = 'store_false')
-parser$add_argument('-gr', '--group', dest = 'grp', help = 'group name for group summary. No group -> no summary. Default \"all\" -> all groups', required = F, default = 'all')
 required_args <- parser$add_argument_group('required arguments')
 required_args$add_argument('-xls', '--xls', dest = 'xlsfile', help = '*.xls file for group summary to be saved', required = F)
 required_args$add_argument('-f', '--file', dest = 'file', help = 'path to file containing data', required = TRUE)
@@ -53,41 +52,46 @@ cat('==================================\n')
 reportData$shortSummary <- quiet(summary(loadedData))
 
 # If user wants long format.
-reportData$numericSummary <- capture.output(invisible(summariseByGroup(med_data = loadedData, grName = args$grp)))
-reportData$fullSummary <- quiet(summariseByGroup(med_data = loadedData, grName = args$grp))
+# reportData$fullSummaryStr <- capture.output(print(as.data.frame(summariseAllData(med_data = loadedData)), quote = T, row.names = F, right = F))
+reportData$fullSummary <- summariseAllData(med_data = loadedData)
 if(!args$long_f){
   cat('\nLong Summary of numeric data\n')
   cat('==================================\n')
-  cat(reportData$numericSummary, sep = '\n')
+  print(as.data.frame(reportData$fullSummary), row.names = F)
   cat('==================================\n \n')
 }else{
   cat('Skipped long summary report.\n\n')
 }
 
 # Report about outliers.
-cat('\nNumber of outliers in given data sets\n')
+cat('Number of outliers in given data sets\n')
 cat('==================================\n')
 cat('WARNING! Number of outliers may differ in specific groups!\n')
-l_outliers <- lapply(loadedData[,sapply(loadedData, is.numeric)], outliers)
-reportData$outliersReport <- invisible(capture.output((function(outs)
+l_outliers <- lapply(loadedData %>% select_if(is.numeric), outliers)
+reportData$outliersStr <- capture.output((function(outs)
   for(attr in names(outs))
-    cat('In attribute', attr, length(outs[[attr]]), 'outliers.\n'))(l_outliers)))
-cat(reportData$outliersReport, sep = '\n')
+    cat('In attribute', attr, length(outs[[attr]]), 'outliers.\n'))(l_outliers))
+
+cat(reportData$outliersStr, sep = '\n')
 cat('==================================\n')
 
 # Plot outliers
-grouped_box_plot(loadedData, args$plotDir)
+quiet(grouped_box_plot(loadedData, args$plotDir))
 
-# Make shapiro test. Plot distributions.
-reportData$dataSignificance <- capture.output(invisible(nd_group_test(loadedData)))
+# Make shapiro test. Plot distributions. -> Data significance.
+reportData$dataSignificanceStr <- capture.output(report_data_significance(
+    colnames(loadedData %>% select_if(is.numeric)), 
+    reportData$fullSummary))
+
 if(!args$long_f){
   cat('Data significance according to normal distribution.\n')
   cat('==================================\n')
-  cat(reportData$dataSignificance, sep ='\n')
+  cat(reportData$dataSignificanceStr, sep = '\n')
   cat('==================================\n \n')
 }else{
   cat('Skipped data significance report.\n\n')
 }
+cat('**Plotting data** ...\n')
 quiet(nd_group_plot(loadedData, args$plotDir))
 
 # Generate raport.
