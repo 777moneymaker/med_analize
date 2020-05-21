@@ -41,12 +41,20 @@ generateReport <- function(reportData){
   cat('==================================\n \n')
   sink()
   
-  # Write numeric data numeric data
+  # Write numeric data numeric data.
   for(summ in reportData$fullSummary){
     write.table(summ, file = reportData$args$xlsfile, quote = F, na = '', row.names = F, append = T, sep = ';')
   }
- 
-  # Data significance
+  
+  # Number of outliers.
+  sink(file = reportData$args$outfile, append = T)
+  cat('\nNumber of outliers in given data sets\n')
+  cat('==================================\n')
+  cat(reportData$outliersReport, sep = '\n')
+  cat('==================================\n')
+  sink()
+  
+  # Data significance.
   sink(file = reportData$args$outfile, append = T)
   cat('Data significance according to normal distribution.\n')
   cat('==================================\n')
@@ -125,7 +133,7 @@ nd_group_test <- function(med_data){
   return(final)
 }
 
-nd_group_plot <- function(med_data){
+nd_group_plot <- function(med_data, path){
   # TODO: 
   # make density plot for all groups and parameters.
   graphics.off()
@@ -137,11 +145,32 @@ nd_group_plot <- function(med_data){
       ggpubr::ggdensity(data = numCols, x = col, title = paste(col, 'density plot'), xlab = paste(col, 'value'))
     })
     res <- suppressMessages(ggpubr::ggarrange(plotlist = l))
-    jpeg(filename = paste(gr, 'density_plot.jpeg', sep = '_'), width = 1280, height = 720)
+    jpeg(filename = file.path(path, paste(gr, 'density_plot.jpeg', sep = '_')), width = 1280, height = 720)
     ggpubr::annotate_figure(res, top = paste(gr, 'attributions distribution plot'))
     print(res)
     dev.off()
   }
+  return(res)
+}
+
+grouped_box_plot <- function(med_data, path){
+  graphics.off()
+  grps <- unique(med_data[[1]])
+  graphics.off()
+  for(gr in grps){
+    grouped <- droplevels(med_data[med_data[[1]] == gr,])
+    numCols <- grouped[,unlist(lapply(grouped, is.numeric))]
+    jpeg(filename = file.path(path, paste(gr, 'box_plot.jpeg', sep = '_')), width = 1280, height = 720)
+    boxplot(numCols, main = paste(gr, 'attributes box plot'), xlab = 'Attributes', ylab = 'Value', outline = T)
+    dev.off()
+  }
+}
+
+outliers <- function(med_data){
+  qnt <- quantile(vec)
+  H <- 1.5 * IQR(vec)
+  res <- vec
+  res <- res[res < (qnt[1] - H) | res > (qnt[2] + H)]
   return(res)
 }
 

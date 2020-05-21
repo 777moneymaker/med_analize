@@ -26,6 +26,7 @@ required_args <- parser$add_argument_group('required arguments')
 required_args$add_argument('-xls', '--xls', dest = 'xlsfile', help = '*.xls file for group summary to be saved', required = F)
 required_args$add_argument('-f', '--file', dest = 'file', help = 'path to file containing data', required = TRUE)
 required_args$add_argument('-s', '--sep', dest = 'sep', help = 'separator used in csv file', required = TRUE)
+required_args$add_argument('-plt', '--plot', dest = 'plotDir', help = 'path to directory in which all plots will be saved.', required = TRUE)
 args <- parser$parse_args()
 
 # File load for batch mode.
@@ -58,18 +59,36 @@ if(!args$long_f){
   cat('\nLong Summary of numeric data\n')
   cat('==================================\n')
   cat(reportData$numericSummary, sep = '\n')
-  cat('==================================\n')
+  cat('==================================\n \n')
 }else{
-  cat('Skipped long summary report.\n')
+  cat('Skipped long summary report.\n\n')
 }
+
+# Report about outliers.
+cat('\nNumber of outliers in given data sets\n')
+cat('==================================\n')
+cat('WARNING! Number of outliers may differ in specific groups!\n')
+l_outliers <- lapply(loadedData[,sapply(loadedData, is.numeric)], outliers)
+reportData$outliersReport <- invisible(capture.output((function(outs)
+  for(attr in names(outs))
+    cat('In attribute', attr, length(outs[[attr]]), 'outliers.\n'))(l_outliers)))
+cat(reportData$outliersReport, sep = '\n')
+cat('==================================\n')
+
+# Plot outliers
+grouped_box_plot(loadedData, args$plotDir)
 
 # Make shapiro test. Plot distributions.
 reportData$dataSignificance <- capture.output(invisible(nd_group_test(loadedData)))
-cat('Data significance according to normal distribution.\n')
-cat('==================================\n')
-cat(reportData$dataSignificance, sep ='\n')
-cat('==================================\n \n')
-quiet(nd_group_plot(loadedData))
+if(!args$long_f){
+  cat('Data significance according to normal distribution.\n')
+  cat('==================================\n')
+  cat(reportData$dataSignificance, sep ='\n')
+  cat('==================================\n \n')
+}else{
+  cat('Skipped data significance report.\n\n')
+}
+quiet(nd_group_plot(loadedData, args$plotDir))
 
 # Generate raport.
 if(!is.null(args$outfile)){
