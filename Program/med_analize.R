@@ -36,7 +36,7 @@ loadedData <- read.csv2(file = args$file, sep = args$sep)
 reportData <- list()
 
 # Calculate number of missing data cells.
-n_missing <- sum(!stats::complete.cases(loadedData))
+n_missing <- sum(is.na(loadedData))
 cat('In given file', n_missing, 'record/s with Not Available data.\n')
 reportData$n_missing <- n_missing
 
@@ -46,19 +46,25 @@ reportData$fullData <- loadedData
 
 # Print short summary.
 cat('Short summary of the given data.\n')
-cat('==================================\n')
-summary(loadedData)
-cat('==================================\n')
+stargazer(loadedData, summary = T, type = 'text')
+cat('\n\n')
 reportData$shortSummary <- quiet(summary(loadedData))
 
 # If user wants long format.
 # reportData$fullSummaryStr <- capture.output(print(as.data.frame(summariseAllData(med_data = loadedData)), quote = T, row.names = F, right = F))
 reportData$fullSummary <- summariseAllData(med_data = loadedData)
 if(!args$long_f){
-  cat('\nLong Summary of numeric data\n')
-  cat('==================================\n')
-  print(as.data.frame(reportData$fullSummary), row.names = F)
-  cat('==================================\n \n')
+  cat('\nLong Summary of numeric data.\n')
+  for(gr in names(reportData$fullSummary)){
+    cat(sprintf('Group %s:\n', gr))
+    for(df in names(reportData$fullSummary[[gr]])){
+      cat(sprintf('Attribute %s stats:', df))
+      stargazer(as.data.frame(reportData$fullSummary[[gr]][[df]][,-1]), type = 'text', summary = F, rownames = F)
+      cat('\n')
+    }
+    cat('\n')
+  }
+  cat('\n\n')
 }else{
   cat('Skipped long summary report.\n\n')
 }
@@ -68,31 +74,45 @@ cat('Number of outliers in given data sets\n')
 cat('==================================\n')
 cat('WARNING! Number of outliers may differ in specific groups!\n')
 l_outliers <- lapply(loadedData %>% select_if(is.numeric), outliers)
-reportData$outliersStr <- capture.output((function(outs)
+f <- function(outs){
+  cat('Attribute: \n')
   for(attr in names(outs))
-    cat('In attribute', attr, length(outs[[attr]]), 'outliers.\n'))(l_outliers))
+    cat(sprintf('\t%s: %i outliers.\n', attr, length(outs[[attr]])))
+}
+reportData$outliersStr <- capture.output(f(l_outliers))
 
 cat(reportData$outliersStr, sep = '\n')
-cat('==================================\n')
+cat('\n\n')
 
 # Plot outliers
 quiet(grouped_box_plot(loadedData, args$plotDir))
 
 # Make shapiro test. Plot distributions. -> Data significance.
-reportData$dataSignificanceStr <- capture.output(report_data_significance(
-    colnames(loadedData %>% select_if(is.numeric)), 
-    reportData$fullSummary))
-
 if(!args$long_f){
   cat('Data significance according to normal distribution.\n')
   cat('==================================\n')
-  cat(reportData$dataSignificanceStr, sep = '\n')
-  cat('==================================\n \n')
+  report_data_significance(reportData$fullSummary)
+  cat('\n\n')
 }else{
   cat('Skipped data significance report.\n\n')
 }
 cat('**Plotting data** ...\n')
 quiet(nd_group_plot(loadedData, args$plotDir))
+
+
+# Make statistical analysis
+if(length(unique(loadedData[[1]])) < 2){
+  warning('Data contains only 1 group. Statistical comparsion is not possible beetween 1 group.\n Skipping analysis ...')
+}else if(length(unique(loadedData[[1]])) == 2){
+  cat('Group-wise analysis stats:')
+  reportData$analysis <- quiet(analize_two(loadedData, reportData$fullSummary))
+  reportData$analysisStr <- capture.output(invisible(analize_two(loadedData, reportData$fullSummary)))
+  stargazer(reportData$analysis %>% as.data.frame, type = 'text', summary = F, rownames = F)
+  cat('Interpretation: \n')
+  cat(reportData$analysisStr, sep = '\n')
+}else{
+  NULL
+}
 
 # Generate raport.
 if(!is.null(args$outfile)){
