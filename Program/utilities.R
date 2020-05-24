@@ -6,7 +6,8 @@ suppressMessages(library('Hmisc', quietly = T))
 suppressMessages(library('dplyr', quietly = T))
 suppressMessages(library('ggpubr', quietly = T))
 suppressMessages(library('stargazer', quietly = T))
-options(device = 'jpeg', warn = -1)
+suppressMessages(library('stats', quietly = T))
+options(warn = -1)
 
 # Report function.
 generateReport <- function(reportData){
@@ -29,8 +30,7 @@ generateReport <- function(reportData){
   }
   # Short summary.
   sink(file = reportData$args$outfile, append = T)
-  cat('Short summary of the given data.\n')
-  stargazer(reportData$fullData, summary = T, type = 'text')
+  stargazer(reportData$fullData, summary = T, type = 'text', title = 'Short summary of the given data')
   cat('\n\n')
   sink()
   
@@ -41,8 +41,7 @@ generateReport <- function(reportData){
   for(gr in names(reportData$fullSummary)){
     cat(sprintf('Group %s:\n', gr))
     for(df in names(reportData$fullSummary[[gr]])){
-      cat(sprintf('Attribute %s stats:', df))
-      stargazer(as.data.frame(reportData$fullSummary[[gr]][[df]][,-1]), type = 'text', summary = F, rownames = F)
+      stargazer(as.data.frame(reportData$fullSummary[[gr]][[df]][,-1]), type = 'text', summary = F, rownames = F, title = sprintf('Attribute %s stats:', df))
       cat('\n')
     }
   }
@@ -50,7 +49,7 @@ generateReport <- function(reportData){
   sink()
   
   # Write full summary to xls.
-  write.table(reportData$fullSummary, file = reportData$args$xlsfile, quote = F, na = '', row.names = F, sep = ';')
+  write_xls(reportData$fullSummary, reportData$args$xlsfile)
   
   # Number of outliers.
   sink(file = reportData$args$outfile, append = T)
@@ -60,7 +59,7 @@ generateReport <- function(reportData){
   cat('\nFor more details -> check boxplots in', reportData$args$plotDir, 'folder.\n\n')
   sink()
   
-  # Data significance.
+  # Data significance -> shapiro tests.
   sink(file = reportData$args$outfile, append = T)
   cat('Data significance according to normal distribution.\n')
   cat('==================================\n')
@@ -70,16 +69,34 @@ generateReport <- function(reportData){
   
   # Stat analysis.
   sink(file = reportData$args$outfile, append = T)
-  cat('Statistical differences between groups:\n')
-  cat('Tests and p-value results')
-  stargazer(reportData$analysis %>% as.data.frame, type = 'text', summary = F, rownames = F)
-  cat('\nInterpretation: \n')
-  cat(reportData$analysisStr, sep = '\n')
+  cat('Analysis: \n\n')
+  sink()
+  if(reportData$n_grps == 2){
+    sink(file = reportData$args$outfile, append = T)
+    stargazer(reportData$analysis %>% as.data.frame, type = 'text', summary = F, rownames = F, title = 'Tests and p-value results beetween all groups')
+    cat(reportData$analysisStr, sep = '\n')
+    cat('\n\n')
+    sink()
+  }else if(reportData$n_grps > 2){
+    sink(file = reportData$args$outfile, append = T)
+    stargazer(reportData$analysis %>% as.data.frame, type = 'text', summary = F, rownames = F, title = 'Tests and p-value results beetween all groups')
+    cat('\nAttributes:\n')
+    cat(reportData$analysisStr, sep = '\n')
+    cat('\n')
+    sink()
+  }else{
+    sink(file = reportData$args$outfile, append = T)
+    cat('WARNING! Data contais only one group. No analysis performed...\n\n')
+    sink()
+  }
+  sink(file = reportData$args$outfile, append = T)
+  cat(reportData$nonNumericAnalysisStr, sep = '\n')
   cat('\n\n')
   sink()
   
   # REPORT END
   cat('Full report saved to', reportData$args$outfile, '\n')
+  cat('All plots saved to', reportData$args$plotDir, '\n')
 }
 
 # Mode function for numeric and character vectors.
@@ -92,7 +109,7 @@ getmode <- function(v) {
 # Imputation if neccessary -> notify user.
 imputeAndNotify <- function(med_data, n_missing){
   if (n_missing)
-    cat('Changes in', n_missing, 'records\n\n')
+    cat('Changes in', n_missing, 'records\n')
   for(col in colnames(med_data)){
     if(is.numeric(med_data[[col]])){
       med_data[[col]] <- impute(med_data[[col]], fun = mean)
@@ -185,7 +202,6 @@ analize_two <- function(med_data, summarisedData){
   grps <- unique(med_data[[1]])
   df <- data.frame(setNames(rep(list(rep(NA, 2)), length(attrs) + 1), c('XXX', attrs)))
   df[['XXX']] <- c('p-value', 'Test')
-  
   cat('Attribute: \n')
   for(attr in attrs){
     eq_nd <- equal_nd(grps[[1]], grps[[2]], attr, summarisedData)
@@ -219,13 +235,94 @@ analize_two <- function(med_data, summarisedData){
   return(df)
 }
     
-analize_multiple <- function(attrs, summarisedData){
-  # TODO
+analize_multiple <- function(med_data, summarisedData){
+  attrs <- colnames(med_data %>% as.data.frame %>% select_if(is.numeric))
+  
+  df <- data.frame(setNames(rep(list(rep(NA, 2)), length(attrs) + 1), c('XXX', attrs)))
+  df[['XXX']] <- c('p-value', 'Test')
+  
+  for(attr in attrs){
+    eq_nd <- equal_nd_multiple(attr, summarisedData)
+    eq_var <- car::leveneTest(med_data[[attr]] ~ med_data[[1]])$`Pr(>F)`[1] > 0.05
+    
+    if(eq_nd & eq_var){
+      anova <- aov(med_data[[attr]] ~ med_data[[1]])
+      summ_aov <- anova %>% summary
+      if(summ_aov[[1]]$`Pr(>F)`[[1]] > 0.05){
+        cat(sprintf('\t%s: ANOVA test has shown no statictical differences.\n', attr))
+        df[[attr]] <- c(formatC(summ_aov[[1]]$`Pr(>F)`[[1]], format = 'e'), 'AOV')
+      }else{
+        cat(sprintf('\t%s: ANOVA test has shown large statictical differences. Additional Tukey test required.\n', attr))
+        tukeyT <- quiet(TukeyHSD(anova))
+        str <- quiet(stargazer(tukeyT[1], summary = F, type = 'text', title = sprintf('%s: Tukey test summary', attr)))
+        cat(str, sep = '\n\t')
+        df[[attr]] <- c(formatC(summ_aov[[1]]$`Pr(>F)`[[1]], format = 'e'), 'Tukey')
+      }
+    }else{
+      t <- kruskal.test(med_data[[attr]] ~ med_data[[1]])$p.value
+      if(t > 0.05){
+        cat(sprintf('\t%s: Kruskal test has shown no statictical differences.\n', attr))
+        df[[attr]] <- c(formatC(t, format = 'e'), 'Kruskal')
+      }else{
+        cat(sprintf('\t%s: Kruskal test has shown large statictical differences. Additional Dunn\'s test required.\n', attr))
+        dunnT <- quiet(dunn.test::dunn.test(as.numeric(med_data[[attr]]), med_data[[1]])) %>% as.data.frame
+        str <- quiet(stargazer(dunnT, type = 'text', summary = F, title = sprintf('%s: Dunn\'s test summary', attr)))
+        cat(str, sep = '\n\t')
+      }
+      df[[attr]] <- c('multiple p\'s', 'Dunn\'s')
+    }
+  }
+  return(df)
+}
 
+analize_non_numeric <- function(med_data, plotDir){
+  non_numeric <- med_data %>% select_if(~!is.numeric(.)) %>% as.data.frame
+  l <- list()
+  cls <- colnames(non_numeric)[-1]
+  
+  for(nm in cls){
+    t <- table(non_numeric[[nm]], non_numeric[[1]])
+    chTest <- chisq.test(non_numeric[[1]], non_numeric[[nm]])$p.value
+    if(chTest > 0.05){
+      cat(sprintf('\t%s: Chi-squared test has shown no statictical differences.\n', nm))
+    }else{
+      cat(sprintf('\t%s: Chi-squared test has shown large statictical differences.\n', nm))
+    }
+    flpath = file.path(plotDir, paste(paste(nm, 'barplot', sep = '_'), '.jpeg', sep = ''))
+    n_vals <- length(unique(non_numeric[[nm]]))
+    
+    jpeg(file = flpath, width = 1280, height = 720)
+    barplot(t, legend = rownames(t), xlab = 'Group', ylab = toupper(nm), col = sample(colors(), n_vals))
+    dev.off()
+    
+    l[[nm]] <- t
+  }
+  return(l)
 }
 
 equal_nd <- function(gr1, gr2, attr, summarisedData){
   return(summarisedData[[gr1]][[attr]]$p.val > 0.05 & summarisedData[[gr2]][[attr]]$p.val > 0.05)
+}
+
+equal_nd_multiple <- function(attr, summarisedData){
+  for(gr in names(summarisedData)){
+    if(summarisedData[[gr]][[attr]]$p.val < 0.05){
+      return(FALSE)
+    }
+  }
+  return(TRUE)
+}
+
+write_xls <- function(summarisedData, filePath){
+  grps <- names(summarisedData)
+  for(gr in grps){
+    b <- bind_rows(summarisedData[[gr]])
+    b[,1] <- names(summarisedData[[gr]])
+    colnames(b)[[1]] <- 'attr'
+    cat(sprintf('Group: %s attributes summary\n', gr), file = filePath, append = T)
+    write.table(b[,-ncol(b)], file = filePath, quote = F, na = '', row.names = F, sep = ';', append = T)
+    cat('\n', append = T, file = filePath)
+  }
 }
 
 outliers <- function(vec){
