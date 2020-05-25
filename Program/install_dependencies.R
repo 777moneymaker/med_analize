@@ -4,4 +4,4 @@
 
 # TODO
 # add another packages
-install.packages(c('argparse', 'Hmisc', 'dplyr', 'ggpubr', 'stargazer', 'gtools'), repos="http://cran.r-project.org", dependencies = T)
+install.packages(c('argparse', 'Hmisc', 'dplyr', 'ggpubr', 'stargazer'), repos="http://cran.r-project.org", dependencies = T)

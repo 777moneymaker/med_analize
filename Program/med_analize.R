@@ -17,19 +17,23 @@ Another requirement is to set first column as the group name e.g. gr1, gr2 etc.\
 Author: Miłosz Chodkowski PUT"
 
 # Arguments parser.
-parser <- argparse::ArgumentParser(description = med_desc, 
-								   formatter_class= 'argparse.RawTextHelpFormatter')
-parser$add_argument('-o', '--out', dest = 'outfile', help = 'output file with generated report', required = F)
-parser$add_argument('-l', '--long', dest = 'long_f', help = 'allow printing long reports on the screen', required = F, action = 'store_false')
+parser <- argparse::ArgumentParser(description = med_desc, formatter_class= 'argparse.RawTextHelpFormatter')
+parser$add_argument('-o', '--out', dest = 'outfile', 
+                    help = 'output file with generated report', required = F)
+parser$add_argument('-l', '--long', dest = 'long_f', 
+                    help = 'allow printing long reports on the screen', required = F, action = 'store_false')
 required_args <- parser$add_argument_group('required arguments')
-required_args$add_argument('-xls', '--xls', dest = 'xlsfile', help = '*.xls file for group summary to be saved', required = F)
-required_args$add_argument('-f', '--file', dest = 'file', help = 'path to file containing data', required = TRUE)
-required_args$add_argument('-s', '--sep', dest = 'sep', help = 'separator used in csv file', required = TRUE)
-required_args$add_argument('-plt', '--plot', dest = 'plotDir', help = 'path to directory in which all plots will be saved.', required = TRUE)
+required_args$add_argument('-xls', '--xls', dest = 'xlsfile', 
+                           help = '*.xls file for group summary to be saved', required = F)
+required_args$add_argument('-f', '--file', dest = 'file', 
+                           help = 'path to file containing data', required = TRUE)
+required_args$add_argument('-s', '--sep', dest = 'sep', 
+                           help = 'separator used in csv file', required = TRUE)
+required_args$add_argument('-plt', '--plot', dest = 'plotDir', 
+                           help = 'path to directory in which all plots will be saved.', required = TRUE)
 args <- parser$parse_args()
 
 # File load for batch mode.
-L <- readLines(args$file, n = 1)
 loadedData <- read.csv2(file = args$file, sep = args$sep)
 
 # Empty list with data for report.
@@ -55,10 +59,12 @@ if(!args$long_f){
   cat('\nLong Summary of numeric data.\n')
   cat('==================================\n')
   for(gr in names(reportData$fullSummary)){
-    cat(sprintf('Group %s:\n', gr))
+    sprintf('Group %s:\n', gr) %>% cat
     for(df in names(reportData$fullSummary[[gr]])){
-      n <- ncol(as.data.frame(reportData$fullSummary[[gr]][[df]]))
-      stargazer(as.data.frame(reportData$fullSummary[[gr]][[df]][,c(-1, -n)]), type = 'text', summary = F, rownames = F, title = sprintf('Attribute %s stats:', df))
+      n <- ncol(reportData$fullSummary[[gr]][[df]] %>% as.data.frame)
+      stargazer(reportData$fullSummary[[gr]][[df]][,c(-1, -n)] %>% as.data.frame, 
+                type = 'text', summary = F, 
+                rownames = F, title = sprintf('Attribute %s stats:', df))
       cat('\n')
     }
     cat('\n')
@@ -76,7 +82,7 @@ l_outliers <- lapply(loadedData %>% select_if(is.numeric), outliers)
 f <- function(outs){
   cat('Attribute: \n')
   for(attr in names(outs))
-    cat(sprintf('\t%s: %i outliers.\n', attr, length(outs[[attr]])))
+    sprintf('\t%s: %i outliers.\n', attr, length(outs[[attr]])) %>% cat
 }
 reportData$outliersStr <- capture.output(f(l_outliers))
 cat(reportData$outliersStr, sep = '\n')
@@ -98,7 +104,6 @@ if(!args$long_f){
 cat('**Plotting data** ...\n\n')
 quiet(nd_group_plot(loadedData, args$plotDir))
 
-
 # Make statistical analysis
 cat('Analysis:\n')
 reportData$n_grps <- length(unique(loadedData[[1]]))
@@ -119,6 +124,12 @@ if( reportData$n_grps < 2){
 reportData$nonNumericAnalysisStr <- capture.output(invisible(analize_non_numeric(loadedData, args$plotDir)))
 cat(reportData$nonNumericAnalysisStr, sep = '\n')
 cat('\n')
+
+# Correlation analysis.
+reportData$corrStr <- capture.output(corr_analize(loadedData, reportData$fullSummary, args$plotDir) %>% invisible)
+cat('Correlation analysis\n')
+cat('==================================\n')
+cat(reportData$corrStr, sep = '\n')
 
 # Generate raport.
 if(!is.null(args$outfile)){
