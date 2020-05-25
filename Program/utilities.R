@@ -7,6 +7,7 @@ suppressMessages(library('dplyr', quietly = T))
 suppressMessages(library('ggpubr', quietly = T))
 suppressMessages(library('stargazer', quietly = T))
 suppressMessages(library('stats', quietly = T))
+suppressMessages(library('utils', quietly = T))
 options(warn = -1)
 
 # Report function.
@@ -319,10 +320,8 @@ corr_analize <- function(med_data, summarisedData, flname){
     for(attrs in tuples){
       eq_nd <- equal_nd_local(summarisedData, gr, attrs[[1]], attrs[[2]])
       eq_var <- car::leveneTest(med_data[[attrs[[1]]]] ~ med_data[[1]])$`Pr(>F)`[1] > 0.05 & 
-        car::leveneTest(med_data[[attrs[[2]]]] ~ med_data[[1]])$`Pr(>F)`[1]
-      
+                car::leveneTest(med_data[[attrs[[2]]]] ~ med_data[[1]])$`Pr(>F)`[1] > 0.05
       ind <- sprintf('%s-%s', attrs[[1]], attrs[[2]])
-      
       if(eq_nd & eq_var){
         t <- cor.test(filtered[[attrs[[1]]]], filtered[[attrs[[2]]]], method = 'pearson')
         if(t$p.value < 0.05){
@@ -336,9 +335,6 @@ corr_analize <- function(med_data, summarisedData, flname){
                   palette = 'blue',
                   ylab = attrs[[2]] %>% toupper,
                   xlab = attrs[[1]] %>% toupper)
-        # jpeg(filename = file.path(flname, sprintf('%s_%s-%s_correlation.jpeg', gr, attrs[[1]], attrs[[2]])))
-        # suppressMessages(print(p))
-        # dev.off()
         pl_list[[ind]] <- p
       }else{
         t <- cor.test(filtered[[attrs[[1]]]], filtered[[attrs[[2]]]], method = 'spearman')
