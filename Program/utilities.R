@@ -51,9 +51,6 @@ generateReport <- function(reportData){
   cat('\n\n')
   sink()
   
-  # Write full summary to xls.
-  write_xls(reportData$fullSummary, reportData$args$xlsfile)
-  
   # Number of outliers.
   sink(file = reportData$args$outfile, append = T)
   cat('Number of outliers in given data sets\n')

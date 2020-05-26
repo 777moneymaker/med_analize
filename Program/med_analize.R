@@ -74,6 +74,9 @@ if(!args$long_f){
   cat('Skipped long summary report.\n\n')
 }
 
+# Write full summary to xls.
+write_xls(reportData$fullSummary, args$xlsfile)
+
 # Number of outliers.
 cat('Number of outliers in given data sets\n')
 cat('==================================\n')
@@ -96,12 +99,12 @@ if(!args$long_f){
   cat('Data significance according to normal distribution.\n')
   cat('==================================\n')
   report_data_significance(reportData$fullSummary)
-  cat('\nFor more details -> check density plots in', reportData$args$plotDir, 'folder.\n')
 }else{
   cat('Skipped data significance report.\n\n')
-  cat('\nFor more details -> check density plots in', reportData$args$plotDir, 'folder.\n')
 }
-cat('**Plotting data** ...\n\n')
+cat('\nFor more details -> check density plots in', reportData$args$plotDir, 'folder.\n\n')
+
+cat('**Plotting data** ...\n')
 quiet(nd_group_plot(loadedData, args$plotDir))
 
 # Make statistical analysis
@@ -126,6 +129,7 @@ cat(reportData$nonNumericAnalysisStr, sep = '\n')
 cat('\n')
 
 # Correlation analysis.
+cat('Making correlation analysis. Plotting...\n')
 reportData$corrStr <- capture.output(corr_analize(loadedData, reportData$fullSummary, args$plotDir) %>% invisible)
 cat('Correlation analysis\n')
 cat('==================================\n')
