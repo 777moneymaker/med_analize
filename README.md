@@ -28,7 +28,24 @@ To uninstall it -> execute uninstall.sh
 ./uninstall.sh
 ```
 
+# Example installation
+```
+user@pc:~/Desktop/med_analize/Program$ sudo ./install_dependencies.R && cd ..
+user@pc:~/Desktop/med_analize$ ./install.sh
+Installed
+
+... Usage...
+
+user@pc:~/Desktop/med_analize$ ./uninstall.sh
+Uninstalled
+```
+
 # Usage
+WARNING: To use med_analize via Rscript or directly from shell, you have to change 9th line of med_analize.R
+```
+source('~/med_analize/utilities.R') -> change to -> source('path/to/med_analize/Programs/utilities.R')
+```
+
 * For additional info
 ```
  med_analize --help
